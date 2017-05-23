@@ -95,7 +95,7 @@
                     <ifNoTests>warn</ifNoTests>
                     <parallelism>1</parallelism>
                     <listeners>
-                        <report-text showThrowable="true" showStackTraces="true" showOutput="${tests.output}"
+                        <report-text showThrowable="true" showStackTraces="true" showOutput="ALWAYS"
                                      showStatusOk="${tests.verbose}" showStatusError="true" showStatusFailure="true"
                                      showStatusIgnored="true" showSuiteSummary="${tests.verbose}" />
                     </listeners>
