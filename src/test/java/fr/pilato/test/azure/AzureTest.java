@@ -22,11 +22,14 @@ package fr.pilato.test.azure;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.PagedList;
+import com.microsoft.azure.RestClient;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.compute.VirtualMachine;
 import com.microsoft.azure.management.compute.VirtualMachines;
 import com.microsoft.azure.management.network.PublicIpAddress;
+import okhttp3.OkHttpClient;
+import okio.AsyncTimeout;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -44,14 +47,20 @@ public class AzureTest {
     private static final String SUBSCRIPTION_ID = "FILL_WITH_YOUR_SUBSCRIPTION_ID";
 
     @Test
-    public void testConnectWithKeySecret() {
+    public void testConnectWithKeySecret() throws Exception {
         assumeFalse("Test is skipped unless you use with real credentials",
                 CLIENT_ID.startsWith("FILL_WITH_YOUR_") ||
                         SECRET.startsWith("FILL_WITH_YOUR_") ||
                         TENANT.startsWith("FILL_WITH_YOUR_") ||
                         SUBSCRIPTION_ID.startsWith("FILL_WITH_YOUR_"));
 
-        Azure client = Azure.authenticate(new ApplicationTokenCredentials(CLIENT_ID, TENANT, SECRET, AzureEnvironment.AZURE))
+
+        RestClient restClient = new RestClient.Builder()
+                .withBaseUrl(AzureEnvironment.AZURE, AzureEnvironment.Endpoint.RESOURCE_MANAGER)
+                .withCredentials(new ApplicationTokenCredentials(CLIENT_ID, TENANT, SECRET, AzureEnvironment.AZURE))
+                .build();
+
+        Azure client = Azure.authenticate(restClient, TENANT)
                         .withSubscription(SUBSCRIPTION_ID);
 
         List<AzureVirtualMachine> machines = new ArrayList<>();
@@ -61,8 +70,22 @@ public class AzureTest {
 
         // We iterate over all VMs and transform them to our internal objects
         for (VirtualMachine vm : vms) {
-            machines.add(toAzureVirtualMachine(vm));
+            AzureVirtualMachine avm = toAzureVirtualMachine(vm);
+            machines.add(avm);
+            System.out.println(avm.getName() + "@" + avm.getPublicIp() + " - " + avm.getPowerState());
         }
+
+        OkHttpClient okHttpClient = restClient.httpClient();
+        okHttpClient.dispatcher().executorService().shutdown();
+        okHttpClient.connectionPool().evictAll();
+        synchronized (okHttpClient.connectionPool()) {
+            okHttpClient.connectionPool().notifyAll();
+        }
+        synchronized (AsyncTimeout.class) {
+            AsyncTimeout.class.notifyAll();
+        }
+
+        Thread.sleep(60000);
     }
 
     private AzureVirtualMachine toAzureVirtualMachine(VirtualMachine vm) {

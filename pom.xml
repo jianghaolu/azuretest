@@ -27,6 +27,11 @@
             <artifactId>azure</artifactId>
             <version>${versions.azure}</version>
         </dependency>
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+            <version>1.13.0</version>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
